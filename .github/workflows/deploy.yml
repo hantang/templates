@@ -1,0 +1,52 @@
+name: Deploy Wiki
+
+on:
+  repository_dispatch:
+    types: [deploy-event]
+
+jobs:
+  deploy:
+    permissions:
+      pages: write
+      id-token: write
+      contents: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    runs-on: ubuntu-latest
+    env:
+      PYTHON_VERSION: 3.x
+      USER: hantang
+      REPO: latex-site
+
+    steps:
+      - name: Checkout site
+        uses: actions/checkout@v4
+      - name: Checkout data
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.USER }}/${{ env.REPO }}
+          token: ${{ secrets.GH_TOKEN }}
+          path: ${{ env.REPO }}
+          fetch-depth: 1
+          ref: ${{ github.ref }}
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: latest
+      - name: Build
+        run: bash ${{ env.REPO }}/deploy.sh ${{ env.REPO }}
+
+      - name: Setup pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: out
+      - name: Deploy to GitHub pages
+        id: deployment
+        uses: actions/deploy-pages@v4
